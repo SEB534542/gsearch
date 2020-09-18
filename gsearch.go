@@ -30,9 +30,11 @@ type parameters struct {
 
 var tpl *template.Template
 var p = parameters{}
+var results = []*result{}
 var port = ":8080"
 
 const configFile = "config.json"
+const exportFile = "output.csv"
 
 func init() {
 	// Loading gohtml templates
@@ -69,6 +71,7 @@ func main() {
 	log.Println("Launching website...")
 	http.HandleFunc("/", handlerMain)
 	http.Handle("/favicon.ico", http.NotFoundHandler())
+	http.HandleFunc("/export", handlerExport)
 	log.Fatal(http.ListenAndServe(port, nil))
 }
 
@@ -90,7 +93,7 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		seb.SaveToJSON(p, configFile)
-		results := search()
+		results = search()
 
 		if err != nil {
 			http.Error(w, "Error processing search, please check connection, API key and Search ID", http.StatusForbidden)
@@ -103,6 +106,32 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func handlerExport(w http.ResponseWriter, req *http.Request) {
+	// Transform output to [][]string
+	lines := [][]string{}
+	for i,v := results {
+		line := []string{
+			
+		}
+	}
+	
+	// Write the file
+	f, err := os.Create(exportFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	if err = w.WriteAll(lines); err != nil {
+		return err
+	}
+	return nil
+	
+	
+	fmt.Fprintf(w, "Output saved as %s", exportFile)
+	return
 }
 
 func search() []*result {
