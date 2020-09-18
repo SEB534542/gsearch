@@ -26,7 +26,7 @@ func main() {
 		log.Panic(err)
 	}
 	for i, v := range results {
-		fmt.Println(i, v.Title, v.Link)
+		fmt.Printf("%v: %v | %v\n", i, v.Title, v.Link)
 	}
 }
 
