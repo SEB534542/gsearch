@@ -29,10 +29,11 @@
   </table>
   <br>
 	<input type="submit" value="Start">
-  {{if .Results}}
-    <a href="/export"><input type="submit" value="Export"/></a>
-  {{end}}
 </form>
+<br>
+{{if .Results}}
+  <a href="/export"><input type="submit" value="Export"/></a>
+{{end}}
 
 {{if .Results}}
 <p><table border="1px solid black" CELLPADDING=3>
