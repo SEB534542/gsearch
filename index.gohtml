@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Google custom search</title>
+</head>
+<body>
+
+<h1>Google custom search</h1>
+
+<form method="POST">
+  <table>
+    <tr>
+			<td><label for="ApiKey">API key</label></td>
+			<td><input type="text" name="ApiKey" value="{{.ApiKey}}" required></td>
+		</tr>
+    <tr>
+			<td><label for="SearchId">Search ID</label></td>
+			<td><input type="text" name="SearchId" value="{{.SearchId}}" required></td>
+		</tr>
+    <tr>
+			<td><label for="Query">Query</label></td>
+			<td><input type="text" name="Query" value="{{.Query}}" required></td>
+		</tr>
+    <tr>
+			<td><label for="Days">Number of Days back</label></td>
+			<td><input type="Days" name="Days" value="{{.Days}}" required></td>
+		</tr>
+  </table>
+  <br>
+	<input type="submit" value="Start">
+</form>
+
+{{if .Results}}
+<p><table border="1px solid black" CELLPADDING=3>
+<tr><td><b>Site</b></td><td><b>Title</b></td><td><b>Snippet</b></td></tr></b>
+  {{range .Results}}
+    <tr><td><a href="{{.Link}}">{{.Link}}</a></td><td>{{.Title}}</td><td>{{.Snippet}}</td></tr>
+  {{end}}
+</table></p>
+{{end}}
+
+</body>
+</html>
