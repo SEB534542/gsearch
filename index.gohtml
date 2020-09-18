@@ -29,6 +29,9 @@
   </table>
   <br>
 	<input type="submit" value="Start">
+  {{if .Results}}
+    <a href="/export"><input type="submit" value="Export"/></a>
+  {{end}}
 </form>
 
 {{if .Results}}

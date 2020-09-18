@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -112,25 +113,20 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 func handlerExport(w http.ResponseWriter, req *http.Request) {
 	// Transform output to [][]string
 	lines := [][]string{}
-	for i,v := results {
-		line := []string{
-			
-		}
+	for _, v := range results {
+		lines = append(lines, []string{v.Title, v.Date, v.Link})
 	}
-	
 	// Write the file
 	f, err := os.Create(exportFile)
 	if err != nil {
-		return err
+		http.Error(w, "Error saving", http.StatusForbidden)
+		return
 	}
 	defer f.Close()
-	w := csv.NewWriter(f)
-	if err = w.WriteAll(lines); err != nil {
-		return err
+	wr := csv.NewWriter(f)
+	if err = wr.WriteAll(lines); err != nil {
+		http.Error(w, "Error saving", http.StatusForbidden)
 	}
-	return nil
-	
-	
 	fmt.Fprintf(w, "Output saved as %s", exportFile)
 	return
 }
