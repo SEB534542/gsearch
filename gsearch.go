@@ -17,6 +17,7 @@ import (
 
 type result struct {
 	Title   string
+	Date    string
 	Snippet string
 	Link    string
 }
@@ -181,7 +182,12 @@ func temp() {
 		fmt.Println(err)
 	}
 
-	totalResults := m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"].(string)
-	fmt.Printf("%T", totalResults)
-	fmt.Println(totalResults)
+	for _, v := range m["items"].([]interface{}) {
+		switch v := v.(type) {
+		case map[string]interface{}:
+			fmt.Printf("%T\n", v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["dc.date"])
+		default:
+			fmt.Println("No")
+		}
+	}
 }
