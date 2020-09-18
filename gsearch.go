@@ -17,6 +17,7 @@ import (
 
 type result struct {
 	Title   string
+	Date    string
 	Snippet string
 	Link    string
 }
@@ -184,10 +185,23 @@ func customSearch(page int) ([]*result, int, error) {
 	for _, v := range m["items"].([]interface{}) {
 		switch v := v.(type) {
 		case map[string]interface{}:
+			date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["dc.date"].(string)
+			if !ok {
+				date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["article:published_time"].(string)
+				if ok {
+					date = date[:10]
+				} else {
+					date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["20060102"].(string)
+					if ok {
+						date = date[:4] + "-" + date[4:6] + "-" + date[6:]
+					}
+				}
+			}
 			results = append(results, &result{
 				Title:   v["title"].(string),
 				Snippet: v["snippet"].(string),
 				Link:    v["link"].(string),
+				Date:    date,
 			})
 		default:
 			return nil, totalResults, fmt.Errorf("customSearch: Unknown data format in response")
@@ -210,7 +224,24 @@ func temp() {
 		fmt.Println(err)
 	}
 
-	totalResults := m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"].(string)
-	fmt.Printf("%T", totalResults)
-	fmt.Println(totalResults)
+	for _, v := range m["items"].([]interface{}) {
+		switch v := v.(type) {
+		case map[string]interface{}:
+			date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["dc.date"].(string)
+			if !ok {
+				date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["article:published_time"].(string)
+				if ok {
+					date = date[:10]
+				} else {
+					date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["20060102"].(string)
+					if ok {
+						date = date[:4] + "-" + date[4:6] + "-" + date[6:]
+					}
+				}
+			}
+			fmt.Println(date)
+		default:
+			fmt.Println("No")
+		}
+	}
 }
