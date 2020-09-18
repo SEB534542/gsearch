@@ -90,7 +90,8 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		seb.SaveToJSON(p, configFile)
-		results, err := customSearch(p.ApiKey, p.SearchId, p.Query, p.Days)
+		results := search()
+
 		if err != nil {
 			http.Error(w, "Error processing search, please check connection, API key and Search ID", http.StatusForbidden)
 			return
@@ -104,26 +105,51 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func customSearch(apiKey, searchId, q string, d int) ([]*result, error) {
-	// Get response from Google customsearch
-	response, err := http.Get("https://www.googleapis.com/customsearch/v1?key=" + apiKey + "&cx=" + searchId + "&q=" + q + "&dateRestrict=d" + fmt.Sprint(d))
+func search() []*result {
+	// Page 1 (first ten results)
+	results, totalResults, err := customSearch(1)
 	if err != nil {
-		return nil, err
+		log.Panic()
+	}
+
+	if totalResults > 10 {
+		pages := totalResults/10 + 1
+		// For each subsequent page, get the data
+		for i := 2; i <= pages; i++ {
+			r, _, err := customSearch(1)
+			if err != nil {
+				log.Panic()
+			}
+			results = append(results, r...)
+		}
+	}
+	return results
+}
+
+func customSearch(page int) ([]*result, int, error) {
+	// Get response from Google customsearch
+	response, err := http.Get("https://www.googleapis.com/customsearch/v1?key=" + p.ApiKey + "&cx=" + p.SearchId + "&q=" + p.Query + "&dateRestrict=d" + fmt.Sprint(p.Days) + "&start=" + fmt.Sprint((page-1)*10+1))
+	if err != nil {
+		return nil, 0, err
 	}
 
 	// Read response
 	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Unmarshal JSON
 	m := map[string]interface{}{}
 	err = json.Unmarshal(responseData, &m)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
+	totalResults, err := strconv.Atoi(m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"].(string))
+	if err != nil {
+		log.Panic()
+	}
 	// Get relevant data elements
 	results := []*result{}
 	for _, v := range m["items"].([]interface{}) {
@@ -135,10 +161,10 @@ func customSearch(apiKey, searchId, q string, d int) ([]*result, error) {
 				Link:    v["link"].(string),
 			})
 		default:
-			return nil, fmt.Errorf("customSearch: Unknown data format in response")
+			return nil, totalResults, fmt.Errorf("customSearch: Unknown data format in response")
 		}
 	}
-	return results, nil
+	return results, totalResults, nil
 }
 
 func temp() {
@@ -155,15 +181,7 @@ func temp() {
 		fmt.Println(err)
 	}
 
-	totalResults := m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"]
-
-	fmt.Println(rx)
-
-	result := m["queries"].(map[string]interface{})
-	fmt.Printf("%T\n", result)
-	r2 := result["request"].([]interface{})
-	fmt.Printf("%T\n", r2[0])
-	r3 := r2[0]
-	fmt.Println(r3.(map[string]interface{})["totalResults"])
-
+	totalResults := m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"].(string)
+	fmt.Printf("%T", totalResults)
+	fmt.Println(totalResults)
 }
