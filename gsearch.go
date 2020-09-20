@@ -17,9 +17,8 @@ import (
 )
 
 type output struct {
-	info struct {
-		TotalResults        string `json:"totalResults"`
-		FormattedSearchTime string `json:"formattedSearchTime"`
+	SearchInformation struct {
+		TotalResults string `json:"totalResults"`
 	} `json:"searchInformation"`
 	Items []struct {
 		Title   string `json:"title"`
@@ -28,8 +27,6 @@ type output struct {
 	} `json:"items"`
 	parameters
 }
-
-type info struct
 
 type result struct {
 	Title   string
@@ -150,7 +147,7 @@ func (o *output) search() error {
 	if err != nil {
 		return err
 	}
-	r, err := strconv.Atoi(o.info.TotalResults)
+	r, err := strconv.Atoi(o.SearchInformation.TotalResults)
 	if err != nil {
 		return err
 	}
@@ -216,10 +213,8 @@ func temp() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(o)
-
-	// fmt.Println("Total Results:", o.info.TotalResults)
-	// for _, v := range o.Items {
-	// 	fmt.Println(v.Title, v.Link)
-	// }
+	fmt.Println("Total Results:", o.SearchInformation.TotalResults)
+	for _, v := range o.Items {
+		fmt.Println(v.Title, v.Link)
+	}
 }
