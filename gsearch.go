@@ -119,13 +119,13 @@ func handlerExport(w http.ResponseWriter, req *http.Request) {
 	// Write the file
 	f, err := os.Create(exportFile)
 	if err != nil {
-		http.Error(w, "Error saving", http.StatusForbidden)
+		http.Error(w, "Error saving", http.StatusBadRequest)
 		return
 	}
 	defer f.Close()
 	wr := csv.NewWriter(f)
 	if err = wr.WriteAll(lines); err != nil {
-		http.Error(w, "Error saving", http.StatusForbidden)
+		http.Error(w, "Error saving", http.StatusBadRequest)
 	}
 	fmt.Fprintf(w, "Output saved as %s", exportFile)
 	return
@@ -174,7 +174,7 @@ func customSearch(page int) ([]*result, int, error) {
 
 	totalResults, err := strconv.Atoi(m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"].(string))
 	if err != nil {
-		log.Panic()
+		return nil, 0, fmt.Errorf("Unable to retrieve data")
 	}
 	// Get relevant data elements
 	results := []*result{}
