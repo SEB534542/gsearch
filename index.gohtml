@@ -31,15 +31,15 @@
 	<input type="submit" value="Start">
 </form>
 <br>
-{{if .Results}}
+{{if .Items}}
   <a href="/export"><input type="submit" value="Export"/></a>
 {{end}}
 
-{{if .Results}}
+{{if .Items}}
 <p><table border="1px solid black" CELLPADDING=3>
-<tr><td><b>Site</b></td><td><b>Title</b></td><td><b>Date</b></td><td><b>Snippet</b></td></tr></b>
-  {{range .Results}}
-    <tr><td><a href="{{.Link}}">{{.Link}}</a></td><td>{{.Title}}</td><td>{{.Date}}</td><td>{{.Snippet}}</td></tr>
+<tr><td><b>Site</b></td><td><b>Title</b></td><td><b>Snippet</b></td></tr></b>
+  {{range .Items}}
+    <tr><td><a href="{{.Link}}">{{.Link}}</a></td><td>{{.Title}}</td><td>{{.Snippet}}</td></tr>
   {{end}}
 </table></p>
 {{end}}
