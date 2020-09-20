@@ -25,6 +25,10 @@ type output struct {
 		Link    string `json:"link"`
 		Snippet string `json:"snippet"`
 	} `json:"items"`
+	Error struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	}
 	parameters
 }
 
@@ -74,7 +78,6 @@ func main() {
 			log.Fatalf("%s is corrupt. Please delete the file (%v)", configFile, err)
 		}
 	}
-
 	err := browser.OpenURL("http://localhost" + port)
 	if err != nil {
 		log.Printf("Unable to open browser. Please visit: http://localhost%v in your browser", port)
@@ -102,7 +105,12 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 		err = o.search()
 		if err != nil {
 			msg := "Error: " + fmt.Sprint(err)
-			http.Error(w, msg, http.StatusForbidden)
+			http.Error(w, msg, http.StatusExpectationFailed)
+			return
+		}
+		if o.Error.Code != 0 {
+			msg := fmt.Sprintf("Error from Google: %v - %v", o.Error.Code, o.Error.Message)
+			http.Error(w, msg, http.StatusExpectationFailed)
 			return
 		}
 	}
@@ -110,13 +118,14 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Panic(err)
 	}
+	return
 }
 
 func handlerExport(w http.ResponseWriter, req *http.Request) {
 	err := o.export(exportFile)
 	if err != nil {
 		msg := "Error saving:" + fmt.Sprint(err)
-		http.Error(w, msg, http.StatusBadRequest)
+		http.Error(w, msg, http.StatusExpectationFailed)
 	}
 	fmt.Fprintf(w, "Output saved as %s", exportFile)
 	return
@@ -142,9 +151,11 @@ func (o *output) export(fname string) error {
 }
 
 func (o *output) search() error {
-	// Empty items and SearchInformation
-	o.Items = o.Items[:0]
+	// Emptying Items, SearchInformation, Errors
+	o.Items = nil
 	o.SearchInformation.TotalResults = "0"
+	o.Error.Code = 0
+	o.Error.Message = ""
 
 	// Get Page 1 (first ten results) + number of totalResults
 	err := o.customSearch(1)
