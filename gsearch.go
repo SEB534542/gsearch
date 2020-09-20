@@ -16,6 +16,18 @@ import (
 	"github.com/pkg/browser"
 )
 
+type output struct {
+	SearchInformation struct {
+		TotalResults string `json:"totalResults"`
+	} `json:"searchInformation"`
+	Items []struct {
+		Title   string `json:"title"`
+		Link    string `json:"link"`
+		Snippet string `json:"snippet"`
+	} `json:"items"`
+	parameters
+}
+
 type result struct {
 	Title   string
 	Date    string
@@ -31,8 +43,7 @@ type parameters struct {
 }
 
 var tpl *template.Template
-var p = parameters{}
-var results = []*result{}
+var o = &output{}
 var port = ":8080"
 
 const configFile = "config.json"
@@ -49,17 +60,16 @@ func init() {
 
 func main() {
 	log.Println("--------Start of program--------")
-
 	// Load parameters
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		// File does not exist, creating blank
-		seb.SaveToJSON(parameters{"", "", "", 0}, configFile)
+		seb.SaveToJSON(o.parameters, configFile)
 	} else {
 		data, err := ioutil.ReadFile(configFile)
 		if err != nil {
 			log.Fatalf("%s is corrupt. Please delete the file (%v)", configFile, err)
 		}
-		err = json.Unmarshal(data, &p)
+		err = json.Unmarshal(data, o)
 		if err != nil {
 			log.Fatalf("%s is corrupt. Please delete the file (%v)", configFile, err)
 		}
@@ -78,132 +88,118 @@ func main() {
 }
 
 func handlerMain(w http.ResponseWriter, req *http.Request) {
-	data := struct {
-		Results []*result
-		parameters
-	}{
-		parameters: p,
-	}
 	if req.Method == http.MethodPost {
 		var err error
-		p.ApiKey = req.PostFormValue("ApiKey")
-		p.SearchId = req.PostFormValue("SearchId")
-		p.Query = req.PostFormValue("Query")
-		p.Days, err = strconv.Atoi(req.PostFormValue("Days"))
+		o.ApiKey = req.PostFormValue("ApiKey")
+		o.SearchId = req.PostFormValue("SearchId")
+		o.Query = req.PostFormValue("Query")
+		o.Days, err = strconv.Atoi(req.PostFormValue("Days"))
 		if err != nil {
 			http.Error(w, "Please enter a number of Days", http.StatusForbidden)
 			return
 		}
-		seb.SaveToJSON(p, configFile)
-		results = search()
-
+		seb.SaveToJSON(o.parameters, configFile)
+		err = o.search()
 		if err != nil {
-			http.Error(w, "Error processing search, please check connection, API key and Search ID", http.StatusForbidden)
+			msg := "Error: " + fmt.Sprint(err)
+			http.Error(w, msg, http.StatusForbidden)
 			return
 		}
-		data.Results = results
-		data.parameters = p
 	}
-	err := tpl.ExecuteTemplate(w, "index.gohtml", data)
+	err := tpl.ExecuteTemplate(w, "index.gohtml", o)
 	if err != nil {
 		log.Panic(err)
 	}
 }
 
 func handlerExport(w http.ResponseWriter, req *http.Request) {
-	// Transform output to [][]string
-	lines := [][]string{}
-	for _, v := range results {
-		lines = append(lines, []string{v.Title, v.Date, v.Link})
-	}
-	// Write the file
-	f, err := os.Create(exportFile)
+	err := o.export(exportFile)
 	if err != nil {
-		http.Error(w, "Error saving", http.StatusBadRequest)
-		return
-	}
-	defer f.Close()
-	wr := csv.NewWriter(f)
-	if err = wr.WriteAll(lines); err != nil {
-		http.Error(w, "Error saving", http.StatusBadRequest)
+		msg := "Error saving:" + fmt.Sprint(err)
+		http.Error(w, msg, http.StatusBadRequest)
 	}
 	fmt.Fprintf(w, "Output saved as %s", exportFile)
 	return
 }
 
-func search() []*result {
-	// Page 1 (first ten results)
-	results, totalResults, err := customSearch(1)
+func (o *output) export(fname string) error {
+	// Transform output to [][]string
+	lines := [][]string{}
+	for _, v := range o.Items {
+		lines = append(lines, []string{v.Title, v.Link})
+	}
+	// Write the file
+	f, err := os.Create(fname)
 	if err != nil {
-		log.Panic()
+		return err
 	}
-
-	if totalResults > 10 {
-		pages := totalResults/10 + 1
-		// For each subsequent page, get the data
-		for i := 2; i <= pages; i++ {
-			r, _, err := customSearch(1)
-			if err != nil {
-				log.Panic()
-			}
-			results = append(results, r...)
-		}
+	defer f.Close()
+	wr := csv.NewWriter(f)
+	if err = wr.WriteAll(lines); err != nil {
+		return err
 	}
-	return results
+	return nil
 }
 
-func customSearch(page int) ([]*result, int, error) {
-	// Get response from Google customsearch
-	response, err := http.Get("https://www.googleapis.com/customsearch/v1?key=" + p.ApiKey + "&cx=" + p.SearchId + "&q=" + p.Query + "&dateRestrict=d" + fmt.Sprint(p.Days) + "&start=" + fmt.Sprint((page-1)*10+1))
+func (o *output) search() error {
+	// Empty items and SearchInformation
+	o.Items = o.Items[:0]
+	o.SearchInformation.TotalResults = "0"
+
+	// Get Page 1 (first ten results) + number of totalResults
+	err := o.customSearch(1)
 	if err != nil {
-		return nil, 0, err
+		return err
+	}
+	r, err := strconv.Atoi(o.SearchInformation.TotalResults)
+	if err != nil {
+		return err
+	}
+	if r > 10 {
+		pages := r/10 + 1
+		// For each subsequent page, get the data
+		for p := 2; p <= pages; p++ {
+			o.customSearch(p)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (o *output) customSearch(page int) error {
+	// Get response from Google customsearch
+	url := "https://www.googleapis.com/customsearch/v1?key=" + o.ApiKey + "&cx=" + o.SearchId + "&q=" + o.Query + "&dateRestrict=d" + fmt.Sprint(o.Days) + "&start=" + fmt.Sprint((page-1)*10+1)
+	fmt.Println(url)
+	response, err := http.Get(url)
+	if err != nil {
+		return err
 	}
 
 	// Read response
 	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
 
 	// Unmarshal JSON
-	m := map[string]interface{}{}
-	err = json.Unmarshal(responseData, &m)
-	if err != nil {
-		return nil, 0, err
+	if o.Items == nil {
+		err = json.Unmarshal(responseData, o)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
-	totalResults, err := strconv.Atoi(m["queries"].(map[string]interface{})["request"].([]interface{})[0].(map[string]interface{})["totalResults"].(string))
+	tempOutput := output{}
+	err = json.Unmarshal(responseData, &tempOutput)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Unable to retrieve data")
+		return err
 	}
-	// Get relevant data elements
-	results := []*result{}
-	for _, v := range m["items"].([]interface{}) {
-		switch v := v.(type) {
-		case map[string]interface{}:
-			date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["dc.date"].(string)
-			if !ok {
-				date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["article:published_time"].(string)
-				if ok {
-					date = date[:10]
-				} else {
-					date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["20060102"].(string)
-					if ok {
-						date = date[:4] + "-" + date[4:6] + "-" + date[6:]
-					}
-				}
-			}
-			results = append(results, &result{
-				Title:   v["title"].(string),
-				Snippet: v["snippet"].(string),
-				Link:    v["link"].(string),
-				Date:    date,
-			})
-		default:
-			return nil, totalResults, fmt.Errorf("customSearch: Unknown data format in response")
-		}
-	}
-	return results, totalResults, nil
+
+	o.Items = append(o.Items, tempOutput.Items...)
+	return nil
 }
 
 func temp() {
@@ -214,30 +210,13 @@ func temp() {
 	}
 
 	// Unmarshal JSON
-	m := map[string]interface{}{}
-	err = json.Unmarshal(responseData, &m)
+	o := &output{}
+	err = json.Unmarshal(responseData, o)
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	for _, v := range m["items"].([]interface{}) {
-		switch v := v.(type) {
-		case map[string]interface{}:
-			date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["dc.date"].(string)
-			if !ok {
-				date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["article:published_time"].(string)
-				if ok {
-					date = date[:10]
-				} else {
-					date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["20060102"].(string)
-					if ok {
-						date = date[:4] + "-" + date[4:6] + "-" + date[6:]
-					}
-				}
-			}
-			fmt.Println(date)
-		default:
-			fmt.Println("No")
-		}
+	fmt.Println("Total Results:", o.SearchInformation.TotalResults)
+	for _, v := range o.Items {
+		fmt.Println(v.Title, v.Link)
 	}
 }
