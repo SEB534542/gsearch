@@ -28,18 +28,20 @@
 		</tr>
   </table>
   <br>
-	<input type="submit" value="Start">
+	<input type="submit" value="Search">
 </form>
 <br>
-{{if .Items}}
-  <a href="/export"><input type="submit" value="Export"/></a>
+{{if eq .SearchInformation.TotalResults "0"}}
+  <p>No results</p>
 {{end}}
 
 {{if .Items}}
+<p><b>Total Results: {{.SearchInformation.TotalResults}}</b></p>
+  <a href="/export"><input type="submit" value="Export"/></a>
 <p><table border="1px solid black" CELLPADDING=3>
-<tr><td><b>Site</b></td><td><b>Title</b></td><td><b>Snippet</b></td></tr></b>
+<tr><td><b>Title</b></td><td><b>Site</b></td><td><b>Snippet</b></td></tr></b>
   {{range .Items}}
-    <tr><td><a href="{{.Link}}">{{.Link}}</a></td><td>{{.Title}}</td><td>{{.Snippet}}</td></tr>
+    <tr><td>{{.Title}}</td><td><a href="{{.Link}}">{{.Link}}</a></td><td>{{.Snippet}}</td></tr>
   {{end}}
 </table></p>
 {{end}}

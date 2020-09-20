@@ -101,7 +101,7 @@ func handlerMain(w http.ResponseWriter, req *http.Request) {
 		seb.SaveToJSON(o.parameters, configFile)
 		err = o.search()
 		if err != nil {
-			msg := "Error processing search, please check connection, API key and Search ID\n\n" + fmt.Sprint(err)
+			msg := "Error: " + fmt.Sprint(err)
 			http.Error(w, msg, http.StatusForbidden)
 			return
 		}
@@ -142,6 +142,10 @@ func (o *output) export(fname string) error {
 }
 
 func (o *output) search() error {
+	// Empty items and SearchInformation
+	o.Items = o.Items[:0]
+	o.SearchInformation.TotalResults = "0"
+
 	// Get Page 1 (first ten results) + number of totalResults
 	err := o.customSearch(1)
 	if err != nil {
@@ -181,9 +185,7 @@ func (o *output) customSearch(page int) error {
 
 	// Unmarshal JSON
 	if o.Items == nil {
-		fmt.Println("First query")
 		err = json.Unmarshal(responseData, o)
-		fmt.Println(o)
 		if err != nil {
 			return err
 		}
