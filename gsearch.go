@@ -16,6 +16,16 @@ import (
 	"github.com/pkg/browser"
 )
 
+type output struct {
+	Query        string `json:"title"`
+	TotalResults string `json:"totalResults"`
+	Items        []struct {
+		Title   string `json:"title"`
+		Link    string `json:"link"`
+		Snippet string `json:"snippet"`
+	}
+}
+
 type result struct {
 	Title   string
 	Date    string
@@ -214,30 +224,13 @@ func temp() {
 	}
 
 	// Unmarshal JSON
-	m := map[string]interface{}{}
-	err = json.Unmarshal(responseData, &m)
+	x := output{}
+	err = json.Unmarshal(responseData, &x)
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	for _, v := range m["items"].([]interface{}) {
-		switch v := v.(type) {
-		case map[string]interface{}:
-			date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["dc.date"].(string)
-			if !ok {
-				date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["article:published_time"].(string)
-				if ok {
-					date = date[:10]
-				} else {
-					date, ok := v["pagemap"].(map[string]interface{})["metatags"].([]interface{})[0].(map[string]interface{})["20060102"].(string)
-					if ok {
-						date = date[:4] + "-" + date[4:6] + "-" + date[6:]
-					}
-				}
-			}
-			fmt.Println(date)
-		default:
-			fmt.Println("No")
-		}
+	fmt.Println(x.Query, x.TotalResults)
+	for _, v := range x.Items {
+		fmt.Println(v.Title, v.Link)
 	}
 }
