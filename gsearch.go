@@ -17,9 +17,10 @@ import (
 )
 
 type output struct {
-	Query        string `json:"title"`
-	TotalResults string `json:"totalResults"`
-	Items        []struct {
+	SearchInformation struct {
+		TotalResults string `json:"totalResults"`
+	} `json:"searchInformation"`
+	Items []struct {
 		Title   string `json:"title"`
 		Link    string `json:"link"`
 		Snippet string `json:"snippet"`
@@ -229,7 +230,7 @@ func temp() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(x.Query, x.TotalResults)
+	fmt.Println("Total Results:", x.SearchInformation.TotalResults)
 	for _, v := range x.Items {
 		fmt.Println(v.Title, v.Link)
 	}
