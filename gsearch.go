@@ -18,15 +18,18 @@ import (
 
 type output struct {
 	info struct {
-		TotalResults string `json:"totalResults"`
+		TotalResults        string `json:"totalResults"`
+		FormattedSearchTime string `json:"formattedSearchTime"`
 	} `json:"searchInformation"`
 	Items []struct {
 		Title   string `json:"title"`
 		Link    string `json:"link"`
 		Snippet string `json:"snippet"`
-	}
+	} `json:"items"`
 	parameters
 }
+
+type info struct
 
 type result struct {
 	Title   string
@@ -166,7 +169,9 @@ func (o *output) search() error {
 
 func (o *output) customSearch(page int) error {
 	// Get response from Google customsearch
-	response, err := http.Get("https://www.googleapis.com/customsearch/v1?key=" + o.ApiKey + "&cx=" + o.SearchId + "&q=" + o.Query + "&dateRestrict=d" + fmt.Sprint(o.Days) + "&start=" + fmt.Sprint((page-1)*10+1))
+	url := "https://www.googleapis.com/customsearch/v1?key=" + o.ApiKey + "&cx=" + o.SearchId + "&q=" + o.Query + "&dateRestrict=d" + fmt.Sprint(o.Days) + "&start=" + fmt.Sprint((page-1)*10+1)
+	fmt.Println(url)
+	response, err := http.Get(url)
 	if err != nil {
 		return err
 	}
@@ -206,13 +211,15 @@ func temp() {
 	}
 
 	// Unmarshal JSON
-	x := output{}
-	err = json.Unmarshal(responseData, &x)
+	o := &output{}
+	err = json.Unmarshal(responseData, o)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println("Total Results:", x.info.TotalResults)
-	for _, v := range x.Items {
-		fmt.Println(v.Title, v.Link)
-	}
+	fmt.Println(o)
+
+	// fmt.Println("Total Results:", o.info.TotalResults)
+	// for _, v := range o.Items {
+	// 	fmt.Println(v.Title, v.Link)
+	// }
 }
