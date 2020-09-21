@@ -32,13 +32,6 @@ type output struct {
 	parameters
 }
 
-type result struct {
-	Title   string
-	Date    string
-	Snippet string
-	Link    string
-}
-
 type parameters struct {
 	ApiKey   string
 	SearchId string
@@ -211,23 +204,4 @@ func (o *output) customSearch(page int) error {
 
 	o.Items = append(o.Items, tempOutput.Items...)
 	return nil
-}
-
-func temp() {
-	// Read response
-	responseData, err := ioutil.ReadFile("output.json")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// Unmarshal JSON
-	o := &output{}
-	err = json.Unmarshal(responseData, o)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println("Total Results:", o.SearchInformation.TotalResults)
-	for _, v := range o.Items {
-		fmt.Println(v.Title, v.Link)
-	}
 }
